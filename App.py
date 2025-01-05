@@ -6,8 +6,12 @@ import os
 # Initialize Flask app
 app = Flask(__name__)
 
-# Initialize TTS engine
-engine = pyttsx3.init()
+# Initialize TTS engine (set to 'espeak-ng' or default)
+engine = pyttsx3.init('espeak-ng')
+
+# Set TTS properties (optional)
+engine.setProperty('rate', 150)  # Speed of speech
+engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
 
 # Basic chatbot responses
 responses = {
@@ -18,7 +22,7 @@ responses = {
 
 # Function to convert text to speech (TTS)
 def speak(text):
-    # Save the speech output as an mp3 file in static folder
+    # Save the speech output as an mp3 file in the static folder
     engine.save_to_file(text, 'static/response.mp3')
     engine.runAndWait()
 
