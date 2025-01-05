@@ -6,8 +6,8 @@ import os
 # Initialize Flask app
 app = Flask(__name__)
 
-# Initialize TTS engine (set to 'espeak-ng' or default)
-engine = pyttsx3.init('espeak-ng')
+# Initialize TTS engine (using default driver)
+engine = pyttsx3.init()
 
 # Set TTS properties (optional)
 engine.setProperty('rate', 150)  # Speed of speech
