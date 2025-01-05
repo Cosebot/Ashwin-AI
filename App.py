@@ -17,7 +17,7 @@ responses = {
 def speak(text):
     # Create a gTTS object with the given text
     tts = gTTS(text=text, lang='en')
-    
+
     # Save the speech output as an mp3 file in the static folder
     tts.save('static/response.mp3')
 
@@ -29,10 +29,10 @@ def home():
 def chat():
     user_input = request.json.get('message').lower()
     response = responses.get(user_input, ["Sorry, I didn't understand that."])
-    
+
     # Trigger TTS for the response
     speak(response[0])  # Respond with the first possible answer (random or predefined)
-    
+
     return jsonify({'response': response[0]})
 
 # HTML, CSS, and JavaScript embedded in the Python script
