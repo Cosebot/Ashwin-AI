@@ -1,17 +1,10 @@
 from flask import Flask, render_template_string, request, jsonify
-import pyttsx3
+from gtts import gTTS
 import random
 import os
 
 # Initialize Flask app
 app = Flask(__name__)
-
-# Initialize TTS engine (using default driver)
-engine = pyttsx3.init()
-
-# Set TTS properties (optional)
-engine.setProperty('rate', 150)  # Speed of speech
-engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
 
 # Basic chatbot responses
 responses = {
@@ -22,9 +15,11 @@ responses = {
 
 # Function to convert text to speech (TTS)
 def speak(text):
+    # Create a gTTS object with the given text
+    tts = gTTS(text=text, lang='en')
+    
     # Save the speech output as an mp3 file in the static folder
-    engine.save_to_file(text, 'static/response.mp3')
-    engine.runAndWait()
+    tts.save('static/response.mp3')
 
 @app.route('/')
 def home():
