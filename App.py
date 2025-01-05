@@ -1,6 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify
 from gtts import gTTS
-import random
 import os
 
 # Initialize Flask app
@@ -19,7 +18,7 @@ def speak(text):
     tts = gTTS(text=text, lang='en')
 
     # Save the speech output as an mp3 file in the static folder
-    tts.save('static/response.mp3')
+    tts.save(os.path.join(app.static_folder, 'response.mp3'))  # Flask automatically serves files in the static folder
 
 @app.route('/')
 def home():
