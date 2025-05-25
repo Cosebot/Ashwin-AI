@@ -1,9 +1,9 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, ConversationalPipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
 tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
 
-chatbot = ConversationalPipeline(model=model, tokenizer=tokenizer)
+chatbot = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
 HTML = """
 <!DOCTYPE html>
