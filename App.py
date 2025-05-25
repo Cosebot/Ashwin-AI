@@ -1,63 +1,104 @@
-from flask import Flask, request, render_template_string
-import requests
+from flask import Flask, request, render_template_string, jsonify
+from transformers import pipeline
 
 app = Flask(__name__)
 
-GEMINI_API_KEY = "AIzaSyD5nKn8-K4cV0Lnc1NmkpB_3uZv3pfBLz4"
-GEMINI_API_URL = "https://api.gemini.ai/v1/chat/completions"  # Hypothetical URL
+# Load the pre-trained base conversational model (no fine-tuning)
+chatbot = pipeline("conversational", model="microsoft/DialoGPT-medium")
 
 HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gemini AI Chat</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Base Chatbot</title>
 <style>
-    body { background:#0e0e0e; color:#fff; font-family:sans-serif; padding:20px; }
-    .container { max-width:400px; margin:auto; display:flex; flex-direction:column; height:100vh; }
-    textarea { width:100%; height:100px; margin-bottom:10px; padding:10px; font-size:16px; border-radius:10px; border:none; resize:none; }
-    button { padding:12px; background:#1f8ef1; color:#fff; border:none; border-radius:10px; font-size:16px; cursor:pointer; margin-bottom:10px; }
-    .response-box { flex:1; background:#1a1a1a; padding:10px; border-radius:10px; white-space: pre-wrap; overflow-y:auto; }
+  body {
+    margin: 0; padding: 20px;
+    font-family: Arial, sans-serif;
+    background: #121212; color: #eee;
+    display: flex; flex-direction: column; height: 100vh;
+  }
+  .container {
+    margin: auto; max-width: 400px;
+    width: 100%; display: flex; flex-direction: column; height: 100%;
+  }
+  textarea {
+    width: 100%; height: 100px;
+    resize: none; padding: 10px; font-size: 16px;
+    border-radius: 8px; border: none; outline: none;
+    margin-bottom: 10px;
+  }
+  button {
+    padding: 12px; font-size: 16px;
+    background: #0066ff; color: white; border: none; border-radius: 8px;
+    cursor: pointer; margin-bottom: 10px;
+  }
+  .response-box {
+    flex: 1; overflow-y: auto;
+    background: #222; padding: 10px; border-radius: 8px;
+    white-space: pre-wrap;
+  }
 </style>
 </head>
 <body>
-    <div class="container">
-        <form method="POST">
-            <textarea name="prompt" placeholder="Type your prompt...">{{ prompt or '' }}</textarea>
-            <button type="submit">Send</button>
-        </form>
-        <div class="response-box">{{ response or 'Response will appear here...' }}</div>
-    </div>
+  <div class="container">
+    <form id="chat-form">
+      <textarea id="prompt" placeholder="Type your message here..."></textarea>
+      <button type="submit">Send</button>
+    </form>
+    <div class="response-box" id="response">Response will appear here...</div>
+  </div>
+
+<script>
+  const form = document.getElementById('chat-form');
+  const promptInput = document.getElementById('prompt');
+  const responseBox = document.getElementById('response');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const prompt = promptInput.value.trim();
+    if (!prompt) return;
+    responseBox.textContent = "Waiting for response...";
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({prompt})
+      });
+      const data = await res.json();
+      if (data.response) {
+        responseBox.textContent = data.response;
+      } else {
+        responseBox.textContent = data.error || "Unknown error";
+      }
+    } catch (err) {
+      responseBox.textContent = "Request failed: " + err.message;
+    }
+  });
+</script>
 </body>
 </html>
 """
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    prompt = ""
-    response = ""
-    if request.method == "POST":
-        prompt = request.form.get("prompt", "")
-        if prompt:
-            headers = {
-                "Authorization": f"Bearer {GEMINI_API_KEY}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "model": "gemini-1-chat",
-                "messages": [{"role": "user", "content": prompt}]
-            }
-            try:
-                res = requests.post(GEMINI_API_URL, json=payload, headers=headers)
-                res.raise_for_status()
-                data = res.json()
-                # Typical response format assumed:
-                response = data['choices'][0]['message']['content']
-            except Exception as e:
-                response = f"API call failed: {str(e)}"
+@app.route("/")
+def home():
+    return render_template_string(HTML)
 
-    return render_template_string(HTML, prompt=prompt, response=response)
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.json
+    prompt = data.get("prompt", "")
+    if not prompt:
+        return jsonify({"error": "No prompt provided"}), 400
+    try:
+        result = chatbot(prompt)
+        # result is a list of conversations, get the last generated text
+        answer = result[0]['generated_text'] if result else "No response"
+        return jsonify({"response": answer})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
