@@ -1,10 +1,9 @@
-from flask import Flask, request, render_template_string, jsonify
-from transformers import pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, ConversationalPipeline
 
-app = Flask(__name__)
+model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
+tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
 
-# Load the pre-trained base conversational model (no fine-tuning)
-chatbot = pipeline("conversational", model="microsoft/DialoGPT-medium")
+chatbot = ConversationalPipeline(model=model, tokenizer=tokenizer)
 
 HTML = """
 <!DOCTYPE html>
