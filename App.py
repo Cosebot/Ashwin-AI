@@ -102,8 +102,7 @@ def index():
                     "model": "deepseek-chat",
                     "messages": [{"role": "user", "content": prompt}]
                 }
-                res = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload)
-                try:
+                res = requests.post(DEEPSEEK_API_URL, headers=headers, try:
     data = res.json()
     if res.status_code == 200 and 'choices' in data:
         response = data['choices'][0]['message']['content']
