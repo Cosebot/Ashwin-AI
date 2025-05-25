@@ -93,25 +93,23 @@ def index():
     if request.method == "POST":
         prompt = request.form.get("prompt", "")
         if prompt:
+            headers = {
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}]
+            }
             try:
-                headers = {
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                payload = {
-                    "model": "deepseek-chat",
-                    "messages": [{"role": "user", "content": prompt}]
-                }
-                res = requests.post(DEEPSEEK_API_URL, headers=headers, try:
-    data = res.json()
-    if res.status_code == 200 and 'choices' in data:
-        response = data['choices'][0]['message']['content']
-    else:
-        response = f"API Error: {data.get('error', data)}"
-except Exception as e:
-    response = f"Exception: {str(e)}"
+                res = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload)
+                data = res.json()
+                if res.status_code == 200 and "choices" in data:
+                    response = data["choices"][0]["message"]["content"]
+                else:
+                    response = f"API Error: {data.get('error', data)}"
             except Exception as e:
-                response = f"Error: {str(e)}"
+                response = f"Exception: {str(e)}"
 
     return render_template_string(HTML, prompt=prompt, response=response)
 
