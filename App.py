@@ -3,76 +3,23 @@ import requests
 
 app = Flask(__name__)
 
-DEEPSEEK_API_KEY = "sk-0e1fd86d884a44be816fdbcd8c8a365d"
-DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
+GEMINI_API_KEY = "AIzaSyD5nKn8-K4cV0Lnc1NmkpB_3uZv3pfBLz4"
+GEMINI_API_URL = "https://api.gemini.ai/v1/chat/completions"  # Hypothetical URL
 
 HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>DeepSeek Chat</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: sans-serif;
-            background: #0e0e0e;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            box-sizing: border-box;
-        }
-
-        .container {
-            max-width: 400px;
-            margin: auto;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
-        textarea {
-            width: 100%;
-            height: 100px;
-            resize: none;
-            padding: 10px;
-            font-size: 16px;
-            margin-bottom: 10px;
-            border-radius: 10px;
-            border: none;
-            outline: none;
-        }
-
-        button {
-            padding: 12px;
-            background: #1f8ef1;
-            color: white;
-            border: none;
-            font-size: 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-
-        .response-box {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-            background: #1a1a1a;
-            border-radius: 10px;
-            white-space: pre-wrap;
-        }
-
-        @media (max-width: 600px) {
-            body, .container {
-                padding: 10px;
-            }
-        }
-    </style>
+<meta charset="UTF-8" />
+<title>Gemini AI Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+    body { background:#0e0e0e; color:#fff; font-family:sans-serif; padding:20px; }
+    .container { max-width:400px; margin:auto; display:flex; flex-direction:column; height:100vh; }
+    textarea { width:100%; height:100px; margin-bottom:10px; padding:10px; font-size:16px; border-radius:10px; border:none; resize:none; }
+    button { padding:12px; background:#1f8ef1; color:#fff; border:none; border-radius:10px; font-size:16px; cursor:pointer; margin-bottom:10px; }
+    .response-box { flex:1; background:#1a1a1a; padding:10px; border-radius:10px; white-space: pre-wrap; overflow-y:auto; }
+</style>
 </head>
 <body>
     <div class="container">
@@ -94,22 +41,21 @@ def index():
         prompt = request.form.get("prompt", "")
         if prompt:
             headers = {
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                "Content-Type": "application/json"
+                "Authorization": f"Bearer {GEMINI_API_KEY}",
+                "Content-Type": "application/json",
             }
             payload = {
-                "model": "deepseek-chat",
+                "model": "gemini-1-chat",
                 "messages": [{"role": "user", "content": prompt}]
             }
             try:
-                res = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload)
+                res = requests.post(GEMINI_API_URL, json=payload, headers=headers)
+                res.raise_for_status()
                 data = res.json()
-                if res.status_code == 200 and "choices" in data:
-                    response = data["choices"][0]["message"]["content"]
-                else:
-                    response = f"API Error: {data.get('error', data)}"
+                # Typical response format assumed:
+                response = data['choices'][0]['message']['content']
             except Exception as e:
-                response = f"Exception: {str(e)}"
+                response = f"API call failed: {str(e)}"
 
     return render_template_string(HTML, prompt=prompt, response=response)
 
