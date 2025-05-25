@@ -103,8 +103,14 @@ def index():
                     "messages": [{"role": "user", "content": prompt}]
                 }
                 res = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload)
-                data = res.json()
-                response = data['choices'][0]['message']['content']
+                try:
+    data = res.json()
+    if res.status_code == 200 and 'choices' in data:
+        response = data['choices'][0]['message']['content']
+    else:
+        response = f"API Error: {data.get('error', data)}"
+except Exception as e:
+    response = f"Exception: {str(e)}"
             except Exception as e:
                 response = f"Error: {str(e)}"
 
