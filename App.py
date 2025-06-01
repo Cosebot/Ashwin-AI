@@ -3,8 +3,10 @@ import random
 import time 
 import wikipedia 
 import socketio 
-from fastapi import FastAPI, Request, Form 
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, FileResponse from fastapi.staticfiles import StaticFiles from fastapi.templating import Jinja2Templates from gtts import gTTS 
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from gtts import gTTS
 from googleapiclient.discovery import build from threading import Thread
 
 ----- Socket.IO + FastAPI -----
