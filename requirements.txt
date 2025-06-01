@@ -1,4 +1,12 @@
-flask
-transformers
-torch 
+fastapi
+uvicorn[standard]
+python-socketio[asgi]
+google-api-python-client
+wikipedia
+gTTS
+supabase
+jinja2
+python-dotenv
 gunicorn
+httpx
+aiofiles
