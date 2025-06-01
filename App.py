@@ -1,122 +1,64 @@
-from flask import Flask, render_template_string, request, jsonify
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
-import torch
+import os 
+import random 
+import time 
+import wikipedia 
+import socketio 
+from fastapi import FastAPI, Request, Form 
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, FileResponse from fastapi.staticfiles import StaticFiles from fastapi.templating import Jinja2Templates from supabase import create_client from gtts import gTTS from googleapiclient.discovery import build from threading import Thread
 
-app = Flask(__name__)
+----- Setup Supabase -----
 
-# Load GPT-2
-model_name = "gpt2"
-tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-model = GPT2LMHeadModel.from_pretrained(model_name)
-model.eval()
+SUPABASE_URL = os.environ.get("SUPABASE_URL") SUPABASE_KEY = os.environ.get("SUPABASE_KEY") supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# HTML UI Template
-index_html = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Sanji AI - GPT-2 Playground</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            background: linear-gradient(135deg, #1b0b2e, #6E33B1);
-            color: #fff;
-            font-family: 'SF Pro Display', sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-        h1 {
-            margin-top: 20px;
-        }
-        .container {
-            background: rgba(255,255,255,0.1);
-            padding: 20px;
-            border-radius: 15px;
-            max-width: 600px;
-            width: 90%;
-            box-shadow: 0 0 20px #6E33B1;
-        }
-        textarea {
-            width: 100%;
-            height: 120px;
-            border-radius: 10px;
-            border: none;
-            padding: 10px;
-            font-size: 16px;
-            background: rgba(255,255,255,0.2);
-            color: #fff;
-            margin-bottom: 15px;
-            resize: none;
-        }
-        button {
-            background: #6E33B1;
-            color: #fff;
-            border: none;
-            border-radius: 30px;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background: #8f45f4;
-        }
-        .response {
-            background: rgba(255,255,255,0.1);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            white-space: pre-wrap;
-        }
-    </style>
-</head>
-<body>
-    <h1>Sanji AI - GPT-2 Playground</h1>
-    <div class="container">
-        <textarea id="prompt" placeholder="Enter your prompt here..."></textarea>
-        <button onclick="generateText()">Generate</button>
-        <div id="response" class="response"></div>
-    </div>
-    <script>
-        async function generateText() {
-            const prompt = document.getElementById("prompt").value;
-            const responseDiv = document.getElementById("response");
-            responseDiv.innerText = "Generating...";
-            const response = await fetch('/generate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({prompt: prompt})
-            });
-            const data = await response.json();
-            responseDiv.innerText = data.response;
-        }
-    </script>
-</body>
-</html>
-"""
+----- Socket.IO + FastAPI -----
 
-@app.route("/")
-def index():
-    return render_template_string(index_html)
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*") app = FastAPI() sio_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
-@app.route("/generate", methods=["POST"])
-def generate():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    inputs = tokenizer.encode(prompt, return_tensors="pt")
-    with torch.no_grad():
-        outputs = model.generate(
-            inputs, 
-            max_length=150, 
-            num_return_sequences=1, 
-            temperature=0.7,
-            top_k=50,
-            pad_token_id=tokenizer.eos_token_id
-        )
-    text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return jsonify({"response": text})
+----- Static & Templates -----
 
-if __name__ == "__main__":
-    app.run(debug=True)
+app.mount("/static", StaticFiles(directory="static"), name="static") templates = Jinja2Templates(directory="templates")
+
+----- Chatbot Logic -----
+
+english_responses = { "hello": ["Hello there! How can I assist you today?", "Hi! Need anything?", "Hey! I'm here to help."], "how are you": ["Doing great! How about you?", "All systems go!"], "bye": ["Catch you later!", "Goodbye! Stay awesome!"], }
+
+def detect_query_type(text): text = text.lower().strip() if "who is" in text: return "who" elif "what is" in text: return "what" elif "where is" in text: return "where" return "chat"
+
+def extract_topic(text): for keyword in ["play", "show me", "turn on", "video of"]: if keyword in text: return text.split(keyword, 1)[1].strip() return text.strip()
+
+def search_wikipedia(query, sentences=2): try: summary = wikipedia.summary(query, sentences=sentences) return f"According to Wikipedia: {summary}" except wikipedia.DisambiguationError as e: return f"Too many results. Suggestions: {', '.join(e.options[:3])}" except wikipedia.PageError: return "Couldn't find anything." except Exception as e: return f"Error: {str(e)}"
+
+def search_youtube_video(query): try: api_key = os.environ.get("YOUTUBE_API_KEY") youtube = build("youtube", "v3", developerKey=api_key) request = youtube.search().list(part="snippet", q=query, type="video", maxResults=1) response = request.execute() items = response.get("items") if items: vid = items[0]["id"]["videoId"] title = items[0]["snippet"]["title"] return f'<iframe width="100%" height="315" src="https://www.youtube.com/embed/{vid}" frameborder="0" allowfullscreen></iframe><br>{title}' return "No video found." except Exception as e: return f"Error: {str(e)}"
+
+def get_chatbot_response(user_input, name="User"): user_input = user_input.lower() for key, replies in english_responses.items(): if key in user_input: return f"{name}, {random.choice(replies)}" return f"{name}, I didn't get that."
+
+def cleanup_audio(filename): time.sleep(10) if os.path.exists(filename): os.remove(filename)
+
+----- Socket Events -----
+
+@sio.event async def connect(sid, environ): print(f"[+] Connected: {sid}") await sio.emit('bot_message', "Connected to Sanji AI!", to=sid)
+
+@sio.event async def disconnect(sid): print(f"[-] Disconnected: {sid}")
+
+@sio.event async def user_message(sid, data): name = data.get("name", "User") message = data.get("message", "") print(f"[{name}] {message}") if any(k in message.lower() for k in ["play", "show me", "video of", "turn on"]): topic = extract_topic(message) response = search_youtube_video(topic) else: intent = detect_query_type(message) if intent in ["who", "what", "where"]: topic = extract_topic(message) response = search_wikipedia(topic) else: response = get_chatbot_response(message, name) await sio.emit('bot_message', response, to=sid)
+
+----- Text-to-Speech Endpoint -----
+
+@app.get("/speak") async def speak(text: str): if not text: return JSONResponse({"error": "No text provided."}, status_code=400) filename = f"speech_{random.randint(1000, 9999)}.mp3" tts = gTTS(text) tts.save(filename) Thread(target=cleanup_audio, args=(filename,)).start() return FileResponse(filename, media_type="audio/mpeg")
+
+----- User Info Endpoints -----
+
+@app.post("/update_username") async def update_username(request: Request): session = request.session if "token" not in session: return JSONResponse({"error": "Not authenticated"}, status_code=401) data = await request.json() username = data.get("username", "").strip() if not username: return JSONResponse({"error": "Username cannot be empty."}, status_code=400) email = session.get("email") supabase.table("user_memories").insert({ "user_mail": email, "memory_type": "setting", "memory_key": "preferred_name", "memory_value": username }).execute() session["name"] = username return {"message": "Username updated successfully!"}
+
+@app.get("/get_user_info") async def get_user_info(request: Request): session = request.session if "token" not in session: return JSONResponse({"error": "Not authenticated"}, status_code=401) return {"email": session.get("email"), "name": session.get("name", "User")}
+
+----- GUI -----
+
+@app.get("/chat") async def chat_ui(request: Request): theme_gradient = "radial-gradient(circle at top, #0E0307 0%, #1b0b2e 100%)"  # Placeholder email = request.cookies.get("email", "guest") return templates.TemplateResponse("chat.html", {"request": request, "theme_gradient": theme_gradient, "email": email})
+
+@app.get("/settings") async def settings_ui(request: Request): theme_gradient = "radial-gradient(circle at top, #0E0307 0%, #1b0b2e 100%)"  # Placeholder email = request.cookies.get("email", "guest") return templates.TemplateResponse("settings.html", {"request": request, "theme_gradient": theme_gradient, "email": email})
+
+@app.get("/") async def index(): return RedirectResponse(url="/chat")
+
+Run with: uvicorn main:sio_app --reload
+
